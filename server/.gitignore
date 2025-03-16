@@ -54,3 +54,5 @@ nbdist/
 .vscode/
 
 .DS_Store
+
+uploads/

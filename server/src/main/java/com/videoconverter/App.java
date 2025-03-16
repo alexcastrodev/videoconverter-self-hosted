@@ -5,6 +5,7 @@ import io.javalin.http.UploadedFile;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,11 +23,12 @@ public class App
                 errors.put("file", "file is required");
                 context.status(422).json(errors);
             } else {
-                File uploadDir = new File("uploads");
+                File uploadDir = new File("./uploads");
                 if (!uploadDir.exists()) {
                     uploadDir.mkdirs();
                 }
                 File targetFile = new File(uploadDir, file.filename());
+                Path gifPath = Path.of("./uploads/output.gif");
 
                 try (InputStream input = file.content()) {
                     OutputStream output = new FileOutputStream(targetFile);
@@ -37,7 +39,20 @@ public class App
                         output.write(buffer, 0, bytesRead);
                     }
 
-                    context.status(201);
+                    ProcessBuilder builder = new ProcessBuilder(
+                        "ffmpeg", "-i", targetFile.getAbsolutePath(),
+                        "-filter_complex", "[0:v] fps=10,scale=420:250,palettegen [p]; [0:v] fps=10,scale=420:250:-1 [x]; [x][p] paletteuse=dither=bayer",
+                        "-y", gifPath.toString()
+                    );
+
+                    Process process = builder.start();
+                    process.waitFor();
+
+
+                    byte[] gifBytes = Files.readAllBytes(gifPath);
+
+                    context.contentType("image/gif");
+                    context.result(gifBytes);
                 }
             }
         });
